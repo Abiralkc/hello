@@ -1,0 +1,48 @@
+name: JFrog NuGet CI
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Checkout code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2️⃣ Setup .NET
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # 3️⃣ Setup JFrog CLI
+      - name: Setup JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v4
+        env:
+          JF_URL: ${{ secrets.JF_URL }}
+          JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+
+      # 4️⃣ Restore NuGet packages from JFrog
+      - name: Restore NuGet packages
+        run: |
+          jfrog nuget restore
+
+      # 5️⃣ Build project
+      - name: Build project
+        run: |
+          dotnet build --configuration Release
+
+      # 6️⃣ Pack NuGet package
+      - name: Pack NuGet
+        run: |
+          dotnet pack --configuration Release --output ./nupkg
+
+      # 7️⃣ Push NuGet package to JFrog
+      - name: Push NuGet to JFrog
+        run: |
+          jfrog nuget push "./nupkg/*.nupkg" --repo-resolve=nuget-virtual --repo-deploy=nuget-local
